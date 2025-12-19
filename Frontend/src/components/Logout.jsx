@@ -1,22 +1,24 @@
-// Frontend/src/components/Logout.jsx
 import React from "react";
 import { useAuth } from "../context/AuthProvider";
 import toast from "react-hot-toast";
+import { clearAuth } from "../utils/authStorage";
 
 function Logout() {
   const [, setAuthUser] = useAuth();
 
   const handleLogout = () => {
     try {
+      // clear centralized storage
+      clearAuth();
+      // clear context
       setAuthUser(null);
-      localStorage.removeItem("Users");
-      localStorage.removeItem("token");
-      sessionStorage.removeItem("Users");
-      sessionStorage.removeItem("token");
+
       toast.success("Logged out");
+
+      // navigate to home quickly
       setTimeout(() => {
         window.location.href = "/";
-      }, 300);
+      }, 250);
     } catch (error) {
       console.error("Logout error:", error);
       toast.error("Logout failed");
@@ -24,10 +26,7 @@ function Logout() {
   };
 
   return (
-    <button
-      className="px-3 py-2 bg-red-500 text-white rounded-md cursor-pointer"
-      onClick={handleLogout}
-    >
+    <button className="px-3 py-2 bg-red-500 text-white rounded-md cursor-pointer" onClick={handleLogout}>
       Logout
     </button>
   );

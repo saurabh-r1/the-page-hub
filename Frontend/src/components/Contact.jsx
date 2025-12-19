@@ -221,10 +221,10 @@ export default function Contact() {
                 Mumbai, India
               </p>
               <p className="text-sm text-slate-600 dark:text-slate-300">
-                Phone: +91 98765 43210
+                Phone: +91 9471649225
               </p>
               <p className="text-sm text-slate-600 dark:text-slate-300">
-                Email: hello@bookstore.test
+                Email: thepagehub@bookstore.test
               </p>
             </div>
 

@@ -1,9 +1,9 @@
-// Frontend/src/components/Login.jsx
 import React, { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthProvider";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../api/axiosInstance";
+import { saveAuth } from "../utils/authStorage";
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -11,17 +11,15 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const [remember, setRemember] = useState(
-    localStorage.getItem("remember") === "true"
+    localStorage.getItem("auth_v1") !== null
   );
 
-  const [, setAuthUser] = useAuth();
+  const [authUser, setAuthUser] = useAuth(); // note: we get and set user object
   const navigate = useNavigate();
   const location = useLocation();
   const emailRef = useRef(null);
 
   // Where to go after login:
-  // - if came from a protected page (like book detail or cart), go back there
-  // - otherwise default to /course
   const from = location.state?.from?.pathname || "/course";
 
   useEffect(() => {
@@ -31,9 +29,15 @@ export default function Login() {
     const onShow = () => setTimeout(() => emailRef.current?.focus(), 60);
     dialog.addEventListener("show", onShow);
 
-    const remEmail = localStorage.getItem("rememberEmail");
-    if (remEmail) {
-      setForm((p) => ({ ...p, email: remEmail }));
+    // populate remembered email if present in storage
+    const stored = localStorage.getItem("auth_v1") || sessionStorage.getItem("auth_v1");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed?.user?.email) {
+          setForm((p) => ({ ...p, email: parsed.user.email }));
+        }
+      } catch {}
     }
 
     return () => dialog.removeEventListener("show", onShow);
@@ -74,29 +78,17 @@ export default function Login() {
       const res = await api.post("/user/login", form);
       const { user, token, message } = res.data;
 
-      setAuthUser(user);
+      // persist centrally
+      saveAuth({ user, token }, remember);
 
-      if (remember) {
-        localStorage.setItem("Users", JSON.stringify(user));
-        localStorage.setItem("token", token);
-        localStorage.setItem("remember", "true");
-        localStorage.setItem("rememberEmail", user.email || form.email);
-        sessionStorage.removeItem("Users");
-        sessionStorage.removeItem("token");
-      } else {
-        sessionStorage.setItem("Users", JSON.stringify(user));
-        sessionStorage.setItem("token", token);
-        localStorage.removeItem("Users");
-        localStorage.removeItem("token");
-        localStorage.removeItem("remember");
-        localStorage.removeItem("rememberEmail");
-      }
+      // update context (user object)
+      setAuthUser(user);
 
       toast.success(message || "Logged in");
 
       closeModal();
 
-      // 🔁 Redirect back to where user came from (book detail, cart, etc.)
+      // Redirect back to where user came from
       navigate(from, { replace: true });
     } catch (err) {
       toast.error(err?.response?.data?.message || "Login failed");
@@ -116,16 +108,10 @@ export default function Login() {
         <div className="w-full py-4 px-6 bg-gradient-to-r from-indigo-500 via-pink-500 to-pink-400">
           <div className="flex items-start justify-between">
             <div>
-              <h3
-                id="login-modal-title"
-                className="text-white text-lg font-semibold"
-              >
+              <h3 id="login-modal-title" className="text-white text-lg font-semibold">
                 Welcome back
               </h3>
-              <p className="text-indigo-100 text-sm mt-1">
-                Sign in to continue
-              </p>
-              {/* Optional hint when redirected from another page */}
+              <p className="text-indigo-100 text-sm mt-1">Sign in to continue</p>
               {location.state?.from && (
                 <p className="text-[11px] text-indigo-100/80 mt-1">
                   You were redirected here to continue your previous action.
@@ -159,19 +145,13 @@ export default function Login() {
                 className="mt-2 input input-bordered w-full rounded-lg h-11 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 focus:ring-4 focus:ring-indigo-200"
                 aria-invalid={!!errors.email}
               />
-              {errors.email && (
-                <p className="text-xs text-red-500 mt-1">{errors.email}</p>
-              )}
+              {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
             </label>
 
             <label className="block">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                  Password
-                </span>
-                <small className="text-xs text-slate-400">
-                  min 6 characters
-                </small>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Password</span>
+                <small className="text-xs text-slate-400">min 6 characters</small>
               </div>
 
               <PasswordInput
@@ -190,17 +170,12 @@ export default function Login() {
                   onChange={(e) => {
                     const checked = e.target.checked;
                     setRemember(checked);
-                    if (checked) localStorage.setItem("remember", "true");
-                    else localStorage.removeItem("remember");
                   }}
                   className="checkbox checkbox-sm border-slate-400 dark:border-slate-600"
                 />
-                <span className="text-slate-600 dark:text-slate-300">
-                  Remember me
-                </span>
+                <span className="text-slate-600 dark:text-slate-300">Remember me</span>
               </label>
 
-              {/* ✅ Real forgot-password navigation */}
               <button
                 type="button"
                 onClick={() => {
@@ -224,11 +199,7 @@ export default function Login() {
 
           <div className="mt-4 text-center text-sm text-slate-600 dark:text-slate-300">
             Don't have an account?{" "}
-            <button
-              onClick={openSignup}
-              type="button"
-              className="text-pink-500 font-medium hover:underline"
-            >
+            <button onClick={openSignup} type="button" className="text-pink-500 font-medium hover:underline">
               Create one
             </button>
           </div>

@@ -346,7 +346,7 @@ export default function Cart() {
                 onClick={handleCheckout}
                 className="w-full mt-3 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
               >
-                Place order (demo)
+                Place order
               </button>
 
               <button

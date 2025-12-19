@@ -1,6 +1,7 @@
+// Frontend/src/components/Freebook.jsx
 import React, { useEffect, useState } from "react";
 import Slider from "react-slick";
-import axios from "axios";
+import api from "../api/axiosInstance";
 import Cards from "./Cards";
 import { useNavigate } from "react-router-dom";
 
@@ -22,20 +23,23 @@ export default function Freebook() {
       image:
         "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=800&q=60&auto=format&fit=crop",
     },
-    // ... rest same as your existing code
+    // ... you can expand sampleBooks as before
   ];
 
   useEffect(() => {
     let mounted = true;
     const getBook = async () => {
       try {
-        const res = await axios.get("http://localhost:4001/book", {
-          timeout: 3000,
-        });
+        // use centralized api (axiosInstance) — will use VITE_API_BASE_URL or fallback
+        const res = await api.get("/book", { timeout: 3000, silent: true });
         if (!mounted) return;
-        if (Array.isArray(res.data) && res.data.length > 0) {
-          const free = res.data.filter((d) => d.category === "Free");
-          setBook(free.length ? free : res.data);
+
+        const data = Array.isArray(res.data) ? res.data : res.data?.data ?? [];
+        if (Array.isArray(data) && data.length > 0) {
+          const free = data.filter(
+            (d) => ((d.category || d.genre || "") + "").toLowerCase() === "free"
+          );
+          setBook(free.length ? free : data);
         } else {
           setBook(sampleBooks);
         }
@@ -51,7 +55,7 @@ export default function Freebook() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, []); // run once
 
   const settings = {
     dots: true,
